@@ -4,10 +4,15 @@
   - Sivu ei vaadi kirjautumista tai latauksia.
   - BusinessId tulee reitilta ja naytetaan otsikossa.
   - Validointi estaa lahetyksen ilman pakollisia kenttia.
+  - Honeyfield torjuu perus-botit ilman raskasta logiikkaa.
+  - Osoite muunnetaan automaattisesti koordinaateiksi ennen lahetysta.
+  - Lomakedata tallennetaan Supabase-tietokantaan.
 */
 
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { geocodeAddress } from '../services/geocoding'
+import { createQuoteRequest } from '../services/quoteRequestService'
 
 const initialFormState = {
   title: '',
@@ -15,7 +20,11 @@ const initialFormState = {
   name: '',
   phone: '',
   address: '',
+  honey: '',
 }
+
+const RATE_LIMIT_MS = 10000
+const RATE_LIMIT_STORAGE_KEY = 'quoteFlow:lastSubmitAt'
 
 /**
  * Validoi lomakkeen pakolliset kentat ja palauttaa virheet.
@@ -41,6 +50,31 @@ const validateRequiredFields = (values) => {
 }
 
 /**
+ * Hakee edellisen lahetyksen ajan selaimesta rate limit -tarkistukseen.
+ * @returns {number} Timestamp millisekunteina tai 0, jos ei saatavilla.
+ */
+const getLastSubmitTimestamp = () => {
+  try {
+    const storedValue = window.localStorage.getItem(RATE_LIMIT_STORAGE_KEY)
+    return storedValue ? Number(storedValue) : 0
+  } catch (error) {
+    return 0
+  }
+}
+
+/**
+ * Tallentaa onnistuneen lahetyksen ajan selaimeen.
+ * @param {number} timestamp Millisekuntitarkkuinen aika.
+ */
+const setLastSubmitTimestamp = (timestamp) => {
+  try {
+    window.localStorage.setItem(RATE_LIMIT_STORAGE_KEY, String(timestamp))
+  } catch (error) {
+    // Jos tallennus ei onnistu, jatketaan ilman rate limit -muistia.
+  }
+}
+
+/**
  * Tarjouspyyntolomake, joka naytetaan businessId-reitilla.
  * @returns {JSX.Element} Lomaketta ja tiloja kuvaava UI.
  */
@@ -51,6 +85,7 @@ function RequestFormPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
   const validationErrors = useMemo(
     () => validateRequiredFields(formValues),
@@ -69,15 +104,75 @@ function RequestFormPage() {
     setTouchedFields((prev) => ({ ...prev, [name]: true }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitAttempted(true)
+
+    // Honeyfield: jos tama taytetaan, oletetaan botti ja estetaan lahetys.
+    if (formValues.honey.trim()) {
+      setSubmissionStatus('error')
+      setErrorMessage(
+        'Lähetys estettiin automaattisen suojauksen vuoksi. Yritä uudelleen.'
+      )
+      return
+    }
+
+    // Rate limit: estetaan toistuvat lahetykset liian nopeasti.
+    const now = Date.now()
+    const lastSubmitAt = getLastSubmitTimestamp()
+    const timeSinceLastSubmit = now - lastSubmitAt
+    if (lastSubmitAt && timeSinceLastSubmit < RATE_LIMIT_MS) {
+      const secondsLeft = Math.ceil(
+        (RATE_LIMIT_MS - timeSinceLastSubmit) / 1000
+      )
+      setSubmissionStatus('error')
+      setErrorMessage(
+        `Lahetysraja ylittyi. Yrita uudelleen ${secondsLeft} sekunnin kuluttua.`
+      )
+      return
+    }
 
     if (!isFormValid) {
       return
     }
 
-    // Oikeassa toteutuksessa tassa kutsuttaisiin APIa ja kasiteltaisiin virheet.
+    // Muunna osoite koordinaateiksi ennen lahetysta (jos annettu).
+    let coordinates = null
+    if (formValues.address.trim()) {
+      setIsGeocoding(true)
+      coordinates = await geocodeAddress(formValues.address)
+      setIsGeocoding(false)
+
+      if (!coordinates) {
+        console.warn(
+          'Osoitetta ei voitu muuntaa koordinaateiksi, jatketaan ilman.'
+        )
+      }
+    }
+
+    // Tallennetaan tarjouspyynto Supabase-tietokantaan.
+    const payload = {
+      businessId,
+      title: formValues.title,
+      description: formValues.description,
+      name: formValues.name,
+      phone: formValues.phone,
+      address: formValues.address,
+      coordinates,
+    }
+
+    const result = await createQuoteRequest(payload)
+
+    if (!result.success) {
+      setSubmissionStatus('error')
+      setErrorMessage(
+        result.error || 'Tallennus epaonnistui. Yrita uudelleen.'
+      )
+      return
+    }
+
+    console.log('Tarjouspyynto lahetetty:', result.data)
+    setLastSubmitTimestamp(now)
     setSubmissionStatus('success')
     setErrorMessage('')
   }
@@ -170,6 +265,17 @@ function RequestFormPage() {
           </div>
         ) : (
           <form className="form" onSubmit={handleSubmit} noValidate>
+            <label className="honeypot" aria-hidden="true">
+              <span>Jätä tämä kenttä tyhjäksi</span>
+              <input
+                type="text"
+                name="honey"
+                value={formValues.honey}
+                onChange={handleChange}
+                autoComplete="off"
+                tabIndex={-1}
+              />
+            </label>
             <label className="field">
               <span>Otsikko *</span>
               <input
@@ -257,9 +363,11 @@ function RequestFormPage() {
               <button
                 type="submit"
                 className="button button--primary"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isGeocoding}
               >
-                Läheta tarjouspyynto
+                {isGeocoding
+                  ? 'Haetaan sijaintia...'
+                  : 'Läheta tarjouspyynto'}
               </button>
               {!isFormValid && submitAttempted ? (
                 <span className="form__hint">

@@ -84,6 +84,14 @@
   gap: 18px;
 }
 
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .field {
   display: grid;
   gap: 8px;
