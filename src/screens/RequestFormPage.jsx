@@ -186,7 +186,7 @@ function RequestFormPage() {
   const handleDemoError = () => {
     setSubmissionStatus('error')
     setErrorMessage(
-      'Lahetys ei onnistunut. Tarkista verkkoyhteys ja yrita uudelleen.'
+      'Lähetys ei onnistunut. Tarkista verkkoyhteys ja yritä uudelleen.'
     )
   }
 

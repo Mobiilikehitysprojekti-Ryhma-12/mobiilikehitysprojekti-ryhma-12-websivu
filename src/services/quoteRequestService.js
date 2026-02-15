@@ -58,9 +58,9 @@ export const createQuoteRequest = async (requestData) => {
       status: 'new',
     }
 
-    // Tallenna Supabaseen.
+    // Tallenna Supabaseen leads-tauluun (businessId mukana).
     const { data, error } = await supabase
-      .from('quote_requests')
+      .from('leads')
       .insert([payload])
       .select()
       .single()
@@ -102,7 +102,7 @@ export const getQuoteRequestById = async (requestId) => {
 
   try {
     const { data, error } = await supabase
-      .from('quote_requests')
+      .from('leads')
       .select('*')
       .eq('id', requestId)
       .single()

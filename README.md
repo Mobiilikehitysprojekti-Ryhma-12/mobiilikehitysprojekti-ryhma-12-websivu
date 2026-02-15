@@ -225,7 +225,7 @@ This web form is designed to work with the QuoteFlow mobile app:
 
 1. **Mobile app generates**: `/request/[businessId]` links or QR codes
 2. **Customer accesses**: Web form via link/QR
-3. **Form submits**: Data to Supabase `quote_requests` table
+3. **Form submits**: Data to Supabase `leads` table with businessId
 4. **Mobile app reads**: New requests from same table with authentication
 
 Shared data structure:

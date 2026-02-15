@@ -24,9 +24,9 @@ const SUPABASE_ANON_KEY = 'your-anon-key-here'
 export const supabase = null
 
 /*
-  Supabase-tietokannan taulun rakenne (quote_requests):
+  Supabase-tietokannan taulun rakenne (leads):
   
-  CREATE TABLE quote_requests (
+  CREATE TABLE leads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     business_id TEXT NOT NULL,
@@ -41,15 +41,15 @@ export const supabase = null
   );
 
   -- RLS-saannot (Row Level Security):
-  ALTER TABLE quote_requests ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
   -- Salli insert kaikille (julkinen lomake)
-  CREATE POLICY "Allow public insert" ON quote_requests
+  CREATE POLICY "Allow public insert" ON leads
     FOR INSERT TO anon
     WITH CHECK (true);
 
   -- Salli luku vain kirjautuneille (yrittajalle mobiilisovelluksessa)
-  CREATE POLICY "Allow authenticated read" ON quote_requests
+  CREATE POLICY "Allow authenticated read" ON leads
     FOR SELECT TO authenticated
     USING (true);
 */

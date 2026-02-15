@@ -13,8 +13,8 @@ Tämä ohje selittää, miten Supabase-tietokanta otetaan käyttöön tarjouspyy
 Mene Supabase-projektin SQL Editoriin ja aja seuraava kysely:
 
 ```sql
--- Luo quote_requests-taulukko
-CREATE TABLE quote_requests (
+-- Luo leads-taulukko (tarjouspyynnot)
+CREATE TABLE leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   business_id TEXT NOT NULL,
@@ -29,22 +29,22 @@ CREATE TABLE quote_requests (
 );
 
 -- Ota käyttöön Row Level Security
-ALTER TABLE quote_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
 -- Salli julkinen insert (lomakkeen lähetys ilman kirjautumista)
-CREATE POLICY "Allow public insert" ON quote_requests
+CREATE POLICY "Allow public insert" ON leads
   FOR INSERT TO anon
   WITH CHECK (true);
 
 -- Salli luku vain kirjautuneille käyttäjille (mobiilisovellus)
-CREATE POLICY "Allow authenticated read" ON quote_requests
+CREATE POLICY "Allow authenticated read" ON leads
   FOR SELECT TO authenticated
   USING (true);
 
 -- Valinnainen: indeksi hakutoimintoja varten
-CREATE INDEX idx_quote_requests_business_id ON quote_requests(business_id);
-CREATE INDEX idx_quote_requests_status ON quote_requests(status);
-CREATE INDEX idx_quote_requests_created_at ON quote_requests(created_at DESC);
+CREATE INDEX idx_leads_business_id ON leads(business_id);
+CREATE INDEX idx_leads_status ON leads(status);
+CREATE INDEX idx_leads_created_at ON leads(created_at DESC);
 ```
 
 ## 3. Hae API-tunnukset
