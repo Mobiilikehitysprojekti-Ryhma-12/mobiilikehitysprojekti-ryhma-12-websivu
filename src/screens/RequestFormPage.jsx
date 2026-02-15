@@ -127,7 +127,7 @@ function RequestFormPage() {
       )
       setSubmissionStatus('error')
       setErrorMessage(
-        `Lahetysraja ylittyi. Yrita uudelleen ${secondsLeft} sekunnin kuluttua.`
+        `Lähetysraja ylittyi. Yritä uudelleen ${secondsLeft} sekunnin kuluttua.`
       )
       return
     }
@@ -166,7 +166,7 @@ function RequestFormPage() {
     if (!result.success) {
       setSubmissionStatus('error')
       setErrorMessage(
-        result.error || 'Tallennus epaonnistui. Yrita uudelleen.'
+        result.error || 'Tallennus epäonnistui. Yritä uudelleen.'
       )
       return
     }
