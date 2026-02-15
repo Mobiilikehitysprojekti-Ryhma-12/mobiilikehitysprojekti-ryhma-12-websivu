@@ -49,7 +49,8 @@ function RequestFormPage() {
   const [formValues, setFormValues] = useState(initialFormState)
   const [touchedFields, setTouchedFields] = useState({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submissionStatus, setSubmissionStatus] = useState('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const validationErrors = useMemo(
     () => validateRequiredFields(formValues),
@@ -76,7 +77,22 @@ function RequestFormPage() {
       return
     }
 
-    setIsSubmitted(true)
+    // Oikeassa toteutuksessa tassa kutsuttaisiin APIa ja kasiteltaisiin virheet.
+    setSubmissionStatus('success')
+    setErrorMessage('')
+  }
+
+  // Palautetaan nakyma takaisin lomakkeeseen demotilanteissa.
+  const returnToForm = () => {
+    setSubmissionStatus('idle')
+  }
+
+  // Simuloi lahetysvirhetta, jotta virhenakyman voi esitella demossa.
+  const handleDemoError = () => {
+    setSubmissionStatus('error')
+    setErrorMessage(
+      'Lahetys ei onnistunut. Tarkista verkkoyhteys ja yrita uudelleen.'
+    )
   }
 
   // Virheita naytetaan vasta kun kenttaa on koskettu tai lahetys yritetty.
@@ -95,27 +111,62 @@ function RequestFormPage() {
   return (
     <div className="page">
       <header className="hero">
-        <p className="hero__eyebrow">QuoteFlow - Tarjouspyynto</p>
-        <h1 className="hero__title">Laheta pyynto nopeasti</h1>
+        <p className="hero__eyebrow">QuoteFlow - Tarjouspyyntö</p>
+        <h1 className="hero__title">Lähetä pyyntö nopeasti</h1>
         <p className="hero__subtitle">
-          Täytä tiedot, niin yrittaja saa kaiken tarvittavan heti.
+          Täytä tiedot, niin yrittäjä saa kaiken tarvittavan heti.
         </p>
         <div className="hero__chip">
           <span>Business ID</span>
           <strong>{businessId || 'tuntematon'}</strong>
         </div>
+        <button
+          type="button"
+          className="button button--ghost"
+          onClick={handleDemoError}
+        >
+          Simuloi lahetysvirhe
+        </button>
       </header>
 
       <section className="card" aria-live="polite">
         <div className="card__header">
           <h2>Lomake</h2>
-          <p>Pakolliset kentat: otsikko, kuvaus, nimi.</p>
+          <p>Pakolliset kentät: otsikko, kuvaus, nimi.</p>
         </div>
 
-        {isSubmitted ? (
+        {submissionStatus === 'success' ? (
           <div className="success">
-            <h3>Kiitos! Pyyntosi on vastaanotettu.</h3>
+            <h3>Kiitos! Pyyntösi on vastaanotettu.</h3>
             <p>Voit sulkea sivun tai palata takaisin, jos haluat.</p>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={returnToForm}
+            >
+              Palaa lomakkeelle
+            </button>
+          </div>
+        ) : submissionStatus === 'error' ? (
+          <div className="error">
+            <h3>Lähetys epäonnistui</h3>
+            <p>{errorMessage}</p>
+            <div className="error__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={returnToForm}
+              >
+                Yritä uudelleen
+              </button>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={returnToForm}
+              >
+                Palaa lomakkeelle
+              </button>
+            </div>
           </div>
         ) : (
           <form className="form" onSubmit={handleSubmit} noValidate>
@@ -203,12 +254,16 @@ function RequestFormPage() {
             </div>
 
             <div className="form__footer">
-              <button type="submit" disabled={!isFormValid}>
-                Laheta tarjouspyynto
+              <button
+                type="submit"
+                className="button button--primary"
+                disabled={!isFormValid}
+              >
+                Läheta tarjouspyynto
               </button>
               {!isFormValid && submitAttempted ? (
                 <span className="form__hint">
-                  Tayta kaikki pakolliset kentat jatkaaksesi.
+                  Tayta kaikki pakolliset kentät jatkaaksesi.
                 </span>
               ) : null}
             </div>
