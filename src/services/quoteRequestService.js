@@ -7,16 +7,22 @@
 
 import { supabase } from './supabaseClient'
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const isValidUuid = (value) => UUID_REGEX.test(value)
+
 /**
  * Tallentaa uuden tarjouspyynnon tietokantaan.
  * @param {Object} requestData Tarjouspyynnon tiedot.
  * @param {string} requestData.businessId Yrittajan tunniste.
  * @param {string} requestData.title Otsikko.
  * @param {string} requestData.description Kuvaus.
- * @param {string} requestData.name Asiakkaan nimi.
+ * @param {string} requestData.customerName Asiakkaan nimi.
  * @param {string} [requestData.phone] Puhelinnumero (valinnainen).
  * @param {string} [requestData.address] Osoite (valinnainen).
- * @param {Object} [requestData.coordinates] Koordinaatit { lat, lon } (valinnainen).
+ * @param {number} [requestData.lat] Latitude (valinnainen).
+ * @param {number} [requestData.lng] Longitude (valinnainen).
  * @returns {Promise<{ success: boolean; data?: any; error?: string }>}
  */
 export const createQuoteRequest = async (requestData) => {
@@ -25,11 +31,18 @@ export const createQuoteRequest = async (requestData) => {
     !requestData.businessId ||
     !requestData.title ||
     !requestData.description ||
-    !requestData.name
+    !requestData.customerName
   ) {
     return {
       success: false,
       error: 'Pakolliset kentät puuttuvat.',
+    }
+  }
+
+  if (!isValidUuid(requestData.businessId)) {
+    return {
+      success: false,
+      error: 'Business ID ei ole kelvollinen UUID.',
     }
   }
 
@@ -51,32 +64,30 @@ export const createQuoteRequest = async (requestData) => {
       business_id: requestData.businessId,
       title: requestData.title.trim(),
       description: requestData.description.trim(),
-      name: requestData.name.trim(),
-      phone: requestData.phone?.trim() || null,
+      customer_name: requestData.customerName.trim(),
+      customer_phone: requestData.phone?.trim() || null,
       address: requestData.address?.trim() || null,
-      coordinates: requestData.coordinates || null,
+      lat: typeof requestData.lat === 'number' ? requestData.lat : null,
+      lng: typeof requestData.lng === 'number' ? requestData.lng : null,
       status: 'new',
+      //created_at: new Date().toISOString(),
     }
 
     // Tallenna Supabaseen leads-tauluun (businessId mukana).
-    const { data, error } = await supabase
-      .from('leads')
-      .insert([payload])
-      .select()
-      .single()
+    const { error } = await supabase.from('leads').insert([payload])
 
     if (error) {
       console.error('Supabase insert virhe:', error)
       return {
         success: false,
-        error: 'Tietokannan tallennus epaonnistui. Yrita uudelleen.',
+        error: 'Tietokannan tallennus epäonnistui. Yritä uudelleen.',
       }
     }
 
-    console.log('Tarjouspyynto tallennettu:', data)
+    console.log('Tarjouspyynto tallennettu:', payload)
     return {
       success: true,
-      data,
+      data: payload,
     }
   } catch (error) {
     console.error('Odottamaton virhe tallennuksessa:', error)

@@ -8,35 +8,33 @@
 // TODO: Asenna Supabase-kirjasto:
 // npm install @supabase/supabase-js
 
-// import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
-// TODO: Korvaa nama oikeilla arvoilla Supabase-projektin asetuksista.
-const SUPABASE_URL = 'https://your-project.supabase.co'
-const SUPABASE_ANON_KEY = 'your-anon-key-here'
+// TODO: Aseta .env-tiedostoon VITE_SUPABASE_URL ja VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
 /**
  * Supabase-asiakas lomakkeen tietojen tallennukseen.
  * Kun projekti on luotu, poista kommentit ja asenna kirjasto.
  */
-// export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-// Valiaikainen placeholder, jotta sovellus ei kaadu ennen kuin Supabase on kaynnissa.
-export const supabase = null
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 /*
   Supabase-tietokannan taulun rakenne (leads):
   
   CREATE TABLE leads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    business_id TEXT NOT NULL,
+    business_id UUID NOT NULL,
     title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    name TEXT NOT NULL,
-    phone TEXT,
-    address TEXT,
-    coordinates JSONB,
+    description TEXT,
     status TEXT DEFAULT 'new',
+    customer_name TEXT,
+    customer_phone TEXT,
+    address TEXT,
+    lat DOUBLE PRECISION,
+    lng DOUBLE PRECISION,
+    created_at TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT valid_status CHECK (status IN ('new', 'quoted', 'accepted', 'rejected'))
   );
 

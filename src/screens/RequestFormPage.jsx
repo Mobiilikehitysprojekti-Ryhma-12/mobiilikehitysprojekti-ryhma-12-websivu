@@ -17,7 +17,7 @@ import { createQuoteRequest } from '../services/quoteRequestService'
 const initialFormState = {
   title: '',
   description: '',
-  name: '',
+  customerName: '',
   phone: '',
   address: '',
   honey: '',
@@ -25,6 +25,22 @@ const initialFormState = {
 
 const RATE_LIMIT_MS = 10000
 const RATE_LIMIT_STORAGE_KEY = 'quoteFlow:lastSubmitAt'
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const isValidUuid = (value) => UUID_REGEX.test(value)
+
+const maskKey = (value) => {
+  if (!value) {
+    return 'missing'
+  }
+
+  if (value.length <= 8) {
+    return `${value.slice(0, 2)}...${value.slice(-2)}`
+  }
+
+  return `${value.slice(0, 4)}...${value.slice(-4)}`
+}
 
 /**
  * Validoi lomakkeen pakolliset kentat ja palauttaa virheet.
@@ -42,8 +58,8 @@ const validateRequiredFields = (values) => {
     errors.description = 'Kuvaus on pakollinen.'
   }
 
-  if (!values.name.trim()) {
-    errors.name = 'Nimi on pakollinen.'
+  if (!values.customerName.trim()) {
+    errors.customerName = 'Nimi on pakollinen.'
   }
 
   return errors
@@ -93,6 +109,7 @@ function RequestFormPage() {
   )
 
   const isFormValid = Object.keys(validationErrors).length === 0
+  const isBusinessIdValid = businessId && isValidUuid(businessId)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -136,6 +153,12 @@ function RequestFormPage() {
       return
     }
 
+    if (!isBusinessIdValid) {
+      setSubmissionStatus('error')
+      setErrorMessage('Business ID ei ole kelvollinen UUID.')
+      return
+    }
+
     // Muunna osoite koordinaateiksi ennen lahetysta (jos annettu).
     let coordinates = null
     if (formValues.address.trim()) {
@@ -155,10 +178,11 @@ function RequestFormPage() {
       businessId,
       title: formValues.title,
       description: formValues.description,
-      name: formValues.name,
+      customerName: formValues.customerName,
       phone: formValues.phone,
       address: formValues.address,
-      coordinates,
+      lat: coordinates?.lat ?? null,
+      lng: coordinates?.lon ?? null,
     }
 
     const result = await createQuoteRequest(payload)
@@ -318,17 +342,17 @@ function RequestFormPage() {
               <span>Nimi *</span>
               <input
                 type="text"
-                name="name"
-                value={formValues.name}
+                name="customerName"
+                value={formValues.customerName}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 placeholder="Etunimi Sukunimi"
-                aria-invalid={Boolean(getFieldError('name'))}
+                aria-invalid={Boolean(getFieldError('customerName'))}
                 aria-describedby="name-error"
               />
-              {getFieldError('name') ? (
+              {getFieldError('customerName') ? (
                 <span className="field__error" id="name-error">
-                  {getFieldError('name')}
+                  {getFieldError('customerName')}
                 </span>
               ) : null}
             </label>
@@ -363,15 +387,19 @@ function RequestFormPage() {
               <button
                 type="submit"
                 className="button button--primary"
-                disabled={!isFormValid || isGeocoding}
+                disabled={!isFormValid || !isBusinessIdValid || isGeocoding}
               >
                 {isGeocoding
                   ? 'Haetaan sijaintia...'
-                  : 'Läheta tarjouspyynto'}
+                  : 'Lähetä tarjouspyyntö'}
               </button>
               {!isFormValid && submitAttempted ? (
                 <span className="form__hint">
                   Tayta kaikki pakolliset kentät jatkaaksesi.
+                </span>
+              ) : !isBusinessIdValid ? (
+                <span className="form__hint">
+                  Business ID ei ole kelvollinen UUID.
                 </span>
               ) : null}
             </div>

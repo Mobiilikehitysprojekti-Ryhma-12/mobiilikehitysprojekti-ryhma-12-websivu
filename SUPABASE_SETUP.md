@@ -54,15 +54,16 @@ CREATE INDEX idx_leads_created_at ON leads(created_at DESC);
    - **Project URL** (esim. `https://abc123.supabase.co`)
    - **anon / public key** (pitkä merkkijono)
 
-## 4. Päivitä sovelluskonfiguraatio
+## 4. Aseta ympäristömuuttujat
 
-Avaa tiedosto `src/services/supabaseClient.js` ja:
+Luo projektin juureen .env-tiedosto ja lisää:
 
-1. Päivitä `SUPABASE_URL` ja `SUPABASE_ANON_KEY` kohdassa 2 haetuilla arvoilla
-2. Poista kommenttimerkinnät riveiltä:
-   - `import { createClient } from '@supabase/supabase-js'`
-   - `export const supabase = createClient(...)`
-3. Poista tai kommentoi placeholder-rivi: `export const supabase = null`
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key-here
+```
+
+Sovellus lukee nämä arvot automaattisesti Vite-ympäristömuuttujista.
 
 ## 5. Asenna Supabase-kirjasto
 
@@ -87,23 +88,9 @@ npm install @supabase/supabase-js
 - **Luku** vaatii kirjautumisen (mobiilisovellusta varten)
 - **Päivitys ja poisto** ovat oletuksena estettyjä
 
-## Valinnainen: ympäristömuuttujat
+## Valinnainen: suojaa tunnukset
 
-Jos haluat piilottaa tunnukset versionhallinnasta:
-
-1. Luo tiedosto `.env` projektin juureen:
-   ```
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   ```
-
-2. Päivitä `supabaseClient.js` käyttämään ympäristömuuttujia:
-   ```js
-   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-   ```
-
-3. Lisää `.env` tiedostoon `.gitignore`
+Varmista, että .env on gitin ignoroinnissa (esim. .gitignore-tiedostossa).
 
 ---
 
