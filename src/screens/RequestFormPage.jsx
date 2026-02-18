@@ -18,6 +18,7 @@ const initialFormState = {
   title: '',
   description: '',
   customerName: '',
+  customerEmail: '',
   phone: '',
   address: '',
   honey: '',
@@ -29,18 +30,6 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const isValidUuid = (value) => UUID_REGEX.test(value)
-
-const maskKey = (value) => {
-  if (!value) {
-    return 'missing'
-  }
-
-  if (value.length <= 8) {
-    return `${value.slice(0, 2)}...${value.slice(-2)}`
-  }
-
-  return `${value.slice(0, 4)}...${value.slice(-4)}`
-}
 
 /**
  * Validoi lomakkeen pakolliset kentat ja palauttaa virheet.
@@ -62,6 +51,13 @@ const validateRequiredFields = (values) => {
     errors.customerName = 'Nimi on pakollinen.'
   }
 
+  const emailValue = values.customerEmail.trim()
+  if (!emailValue) {
+    errors.customerEmail = 'Sähköposti on pakollinen.'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+    errors.customerEmail = 'Tarkista sähköposti.'
+  }
+
   return errors
 }
 
@@ -73,7 +69,7 @@ const getLastSubmitTimestamp = () => {
   try {
     const storedValue = window.localStorage.getItem(RATE_LIMIT_STORAGE_KEY)
     return storedValue ? Number(storedValue) : 0
-  } catch (error) {
+  } catch {
     return 0
   }
 }
@@ -85,7 +81,7 @@ const getLastSubmitTimestamp = () => {
 const setLastSubmitTimestamp = (timestamp) => {
   try {
     window.localStorage.setItem(RATE_LIMIT_STORAGE_KEY, String(timestamp))
-  } catch (error) {
+  } catch {
     // Jos tallennus ei onnistu, jatketaan ilman rate limit -muistia.
   }
 }
@@ -179,6 +175,7 @@ function RequestFormPage() {
       title: formValues.title,
       description: formValues.description,
       customerName: formValues.customerName,
+      customerEmail: formValues.customerEmail,
       phone: formValues.phone,
       address: formValues.address,
       lat: coordinates?.lat ?? null,
@@ -251,7 +248,7 @@ function RequestFormPage() {
       <section className="card" aria-live="polite">
         <div className="card__header">
           <h2>Lomake</h2>
-          <p>Pakolliset kentät: otsikko, kuvaus, nimi.</p>
+          <p>Pakolliset kentät: otsikko, kuvaus, nimi, sähköposti.</p>
         </div>
 
         {submissionStatus === 'success' ? (
@@ -353,6 +350,26 @@ function RequestFormPage() {
               {getFieldError('customerName') ? (
                 <span className="field__error" id="name-error">
                   {getFieldError('customerName')}
+                </span>
+              ) : null}
+            </label>
+
+            <label className="field">
+              <span>Sähköposti *</span>
+              <input
+                type="email"
+                name="customerEmail"
+                value={formValues.customerEmail}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="nimi@esimerkki.fi"
+                required
+                aria-invalid={Boolean(getFieldError('customerEmail'))}
+                aria-describedby="email-error"
+              />
+              {getFieldError('customerEmail') ? (
+                <span className="field__error" id="email-error">
+                  {getFieldError('customerEmail')}
                 </span>
               ) : null}
             </label>

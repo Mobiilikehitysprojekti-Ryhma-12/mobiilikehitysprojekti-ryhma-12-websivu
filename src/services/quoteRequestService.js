@@ -19,6 +19,7 @@ const isValidUuid = (value) => UUID_REGEX.test(value)
  * @param {string} requestData.title Otsikko.
  * @param {string} requestData.description Kuvaus.
  * @param {string} requestData.customerName Asiakkaan nimi.
+ * @param {string} requestData.customerEmail Asiakkaan sahkoposti.
  * @param {string} [requestData.phone] Puhelinnumero (valinnainen).
  * @param {string} [requestData.address] Osoite (valinnainen).
  * @param {number} [requestData.lat] Latitude (valinnainen).
@@ -31,7 +32,8 @@ export const createQuoteRequest = async (requestData) => {
     !requestData.businessId ||
     !requestData.title ||
     !requestData.description ||
-    !requestData.customerName
+    !requestData.customerName ||
+    !requestData.customerEmail
   ) {
     return {
       success: false,
@@ -65,6 +67,7 @@ export const createQuoteRequest = async (requestData) => {
       title: requestData.title.trim(),
       description: requestData.description.trim(),
       customer_name: requestData.customerName.trim(),
+      customer_email: requestData.customerEmail.trim(),
       customer_phone: requestData.phone?.trim() || null,
       address: requestData.address?.trim() || null,
       lat: typeof requestData.lat === 'number' ? requestData.lat : null,

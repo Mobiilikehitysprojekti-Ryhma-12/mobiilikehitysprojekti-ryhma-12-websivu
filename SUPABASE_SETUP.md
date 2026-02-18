@@ -20,10 +20,12 @@ CREATE TABLE leads (
   business_id TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
-  name TEXT NOT NULL,
-  phone TEXT,
+  customer_name TEXT NOT NULL,
+  customer_email TEXT NOT NULL,
+  customer_phone TEXT,
   address TEXT,
-  coordinates JSONB,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
   status TEXT DEFAULT 'new',
   CONSTRAINT valid_status CHECK (status IN ('new', 'quoted', 'accepted', 'rejected'))
 );
