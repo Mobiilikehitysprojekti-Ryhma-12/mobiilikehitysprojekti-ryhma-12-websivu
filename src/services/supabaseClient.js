@@ -11,14 +11,27 @@
 import { createClient } from '@supabase/supabase-js'
 
 // TODO: Aseta .env-tiedostoon VITE_SUPABASE_URL ja VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+// Huom: Jos samaa .env:ia jaetaan Expo RN -projektin kanssa, voidaan kayttaa myos EXPO_PUBLIC_* -muuttujia.
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || import.meta.env.EXPO_PUBLIC_SUPABASE_URL
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+  import.meta.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
 
 /**
  * Supabase-asiakas lomakkeen tietojen tallennukseen.
  * Kun projekti on luotu, poista kommentit ja asenna kirjasto.
  */
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+export const supabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null
+
+if (!supabase) {
+  console.warn(
+    '[QuoteFlow] Supabase ympäristömuuttujat puuttuvat. Aseta VITE_SUPABASE_URL ja VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY (.env), jos haluat tallennuksen Supabaseen.'
+  )
+}
 
 /*
   Supabase-tietokannan taulun rakenne (leads):

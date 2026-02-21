@@ -24,6 +24,20 @@ const initialFormState = {
   honey: '',
 }
 
+// 10 suurinta suomalaista paikkakuntaa koordinaatteineen.
+const FINNISH_CITIES = [
+  { name: 'Helsinki',    lat: 60.1699, lng: 24.9384 },
+  { name: 'Espoo',       lat: 60.2052, lng: 24.6522 },
+  { name: 'Tampere',     lat: 61.4981, lng: 23.7608 },
+  { name: 'Vantaa',      lat: 60.2934, lng: 25.0378 },
+  { name: 'Oulu',        lat: 65.0121, lng: 25.4651 },
+  { name: 'Turku',       lat: 60.4518, lng: 22.2666 },
+  { name: 'Jyväskylä',  lat: 62.2426, lng: 25.7473 },
+  { name: 'Lahti',       lat: 60.9827, lng: 25.6612 },
+  { name: 'Kuopio',      lat: 62.8924, lng: 27.6770 },
+  { name: 'Kouvola',     lat: 60.8682, lng: 26.7042 },
+]
+
 const RATE_LIMIT_MS = 10000
 const RATE_LIMIT_STORAGE_KEY = 'quoteFlow:lastSubmitAt'
 const UUID_REGEX =
@@ -98,6 +112,10 @@ function RequestFormPage() {
   const [submissionStatus, setSubmissionStatus] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [isGeocoding, setIsGeocoding] = useState(false)
+  // 'idle' | 'requesting' | 'granted' | 'denied' | 'error'
+  const [locationStatus, setLocationStatus] = useState('idle')
+  const [gpsCoords, setGpsCoords] = useState(null)
+  const [selectedCity, setSelectedCity] = useState('')
 
   const validationErrors = useMemo(
     () => validateRequiredFields(formValues),
@@ -115,6 +133,37 @@ function RequestFormPage() {
   const handleBlur = (event) => {
     const { name } = event.target
     setTouchedFields((prev) => ({ ...prev, [name]: true }))
+  }
+
+  /**
+   * Pyytaa GPS-sijainnin selaimelta.
+   */
+  const requestGpsLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error')
+      return
+    }
+    setLocationStatus('requesting')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGpsCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        setLocationStatus('granted')
+      },
+      () => {
+        setLocationStatus('error')
+      },
+      { timeout: 10000, maximumAge: 60000 }
+    )
+  }
+
+  /**
+   * Kasittelee kaupunkivalinnan dropdownista.
+   */
+  const handleCityChange = (event) => {
+    setSelectedCity(event.target.value)
   }
 
   const handleSubmit = async (event) => {
@@ -155,17 +204,28 @@ function RequestFormPage() {
       return
     }
 
-    // Muunna osoite koordinaateiksi ennen lahetysta (jos annettu).
-    let coordinates = null
-    if (formValues.address.trim()) {
-      setIsGeocoding(true)
-      coordinates = await geocodeAddress(formValues.address)
-      setIsGeocoding(false)
+    // Koordinaatit: GPS > kaupunkivalinta > osoitteen geokoodaus.
+    let lat = null
+    let lng = null
 
-      if (!coordinates) {
-        console.warn(
-          'Osoitetta ei voitu muuntaa koordinaateiksi, jatketaan ilman.'
-        )
+    if (locationStatus === 'granted' && gpsCoords) {
+      lat = gpsCoords.lat
+      lng = gpsCoords.lng
+    } else if (selectedCity) {
+      const city = FINNISH_CITIES.find((c) => c.name === selectedCity)
+      if (city) {
+        lat = city.lat
+        lng = city.lng
+      }
+    } else if (formValues.address.trim()) {
+      setIsGeocoding(true)
+      const coordinates = await geocodeAddress(formValues.address)
+      setIsGeocoding(false)
+      if (coordinates) {
+        lat = coordinates.lat
+        lng = coordinates.lon
+      } else {
+        console.warn('Osoitetta ei voitu muuntaa koordinaateiksi, jatketaan ilman.')
       }
     }
 
@@ -178,8 +238,8 @@ function RequestFormPage() {
       customerEmail: formValues.customerEmail,
       phone: formValues.phone,
       address: formValues.address,
-      lat: coordinates?.lat ?? null,
-      lng: coordinates?.lon ?? null,
+      lat,
+      lng,
     }
 
     const result = await createQuoteRequest(payload)
@@ -399,6 +459,110 @@ function RequestFormPage() {
                 />
               </label>
             </div>
+
+            {/* -------- Sijainti-osio -------- */}
+            <div className="location-section">
+              <span className="location-section__label">Sijainti (valinnainen)</span>
+
+              {locationStatus === 'idle' && (
+                <div className="location-banner">
+                  <div className="location-banner__info">
+                    <span className="location-banner__icon" aria-hidden="true">📍</span>
+                    <div>
+                      <strong>Lisää sijaintisi automaattisesti?</strong>
+                      <p>Sijainnin jakaminen auttaa yrittäjää arvioimaan etäisyyden.</p>
+                    </div>
+                  </div>
+                  <div className="location-banner__actions">
+                    <button
+                      type="button"
+                      className="button button--primary button--sm"
+                      onClick={requestGpsLocation}
+                    >
+                      Jaa sijainti
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--secondary button--sm"
+                      onClick={() => setLocationStatus('denied')}
+                    >
+                      Ei kiitos
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {locationStatus === 'requesting' && (
+                <div className="location-status location-status--loading">
+                  <span className="location-status__spinner" aria-hidden="true" />
+                  <span>Haetaan sijaintiasi&hellip;</span>
+                </div>
+              )}
+
+              {locationStatus === 'granted' && gpsCoords && (
+                <div className="location-status location-status--success">
+                  <span>
+                    <strong>✓ GPS-sijainti lisätty</strong>{' '}
+                    <span className="location-status__coords">
+                      ({gpsCoords.lat.toFixed(4)}, {gpsCoords.lng.toFixed(4)})
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm"
+                    onClick={() => {
+                      setLocationStatus('idle')
+                      setGpsCoords(null)
+                    }}
+                  >
+                    Poista
+                  </button>
+                </div>
+              )}
+
+              {(locationStatus === 'denied' || locationStatus === 'error') && (
+                <div className="location-city">
+                  {locationStatus === 'error' && (
+                    <p className="field__error location-city__error">
+                      Sijaintia ei voitu hakea automaattisesti. Valitse paikkakunta tai jatka ilman.
+                    </p>
+                  )}
+                  <label className="field">
+                    <span>Paikkakunta</span>
+                    <select
+                      name="selectedCity"
+                      value={selectedCity}
+                      onChange={handleCityChange}
+                      className="location-city__select"
+                    >
+                      <option value="">— Valitse paikkakunta —</option>
+                      {FINNISH_CITIES.map((city) => (
+                        <option key={city.name} value={city.name}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedCity && (
+                    <p className="location-city__hint">
+                      📍 Sijainti: {FINNISH_CITIES.find((c) => c.name === selectedCity)?.lat.toFixed(4)},{' '}
+                      {FINNISH_CITIES.find((c) => c.name === selectedCity)?.lng.toFixed(4)}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm location-city__back"
+                    onClick={() => {
+                      setLocationStatus('idle')
+                      setSelectedCity('')
+                    }}
+                  >
+                    ← Kokeile GPS:ää uudelleen
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* -------- /Sijainti-osio -------- */}
 
             <div className="form__footer">
               <button
